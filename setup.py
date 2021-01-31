@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="ocli-biojet1", # Replace with your own username
+    name="ocli", # Replace with your own username
     version="0.0.1",
     author="biojet1",
     author_email="biojet1@gmail.com",
