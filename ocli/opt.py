@@ -7,13 +7,13 @@ def flag(*args, **kwargs):
 
     def fun(cls):
         d = cls.__dict__
-        l = d.get("_o_params")
-        if l is None:
-            l = {}
-            setattr(cls, "_o_params", l)
+        a = d.get("_o_params")
+        if a is None:
+            a = {}
+            setattr(cls, "_o_params", a)
         for x in args:
-            if x not in l:
-                l[x] = kwargs
+            if x not in a:
+                a[x] = kwargs
         return cls
 
     return fun
@@ -40,21 +40,44 @@ def arg(*args, **kwargs):
 
     def fun(cls):
         d = cls.__dict__
-        l = d.get("_o_args")
-        if l is None:
-            l = []
-            setattr(cls, "_o_args", l)
+        a = d.get("_o_args")
+        if a is None:
+            a = []
+            setattr(cls, "_o_args", a)
         if "dest" not in kwargs:
             # kwargs["dest"] = id(kwargs)
             kwargs["dest"] = cls.__name__
             # kwargs["dest"] = cls.__qualname__
-        l.append(kwargs)
+        a.append(kwargs)
         return cls
 
     return fun
 
 
+def sub_command(value, parent):
+    submap = parent._o_sub
+    klass = submap[select(value, list(submap.keys()))]
+    app = klass()
+    app._o_parent = parent
+    return app.main(parent._o_argv)
+
+
+def sub(cmd_map, **kwargs):
+    if "choices" not in kwargs:
+        kwargs["choices"] = cmd_map.keys()
+    if "call" not in kwargs:
+        kwargs["call"] = '_o_walk_sub'
+    fn = arg(**kwargs)
+
+    def fun(cls):
+        cls._o_sub = cmd_map
+        return fn(cls)
+
+    return fun
+
+
 # TODO: impose required
+# TODO: default from __getattr__
 
 
 def select(val, choices):
@@ -151,11 +174,11 @@ def enum_args(cli, mem=None):
         yield a
 
 
-def walk(cli, argv):
+def walk(cli, argv, skip_first=None):
     seen = set()
     seen_a = {}
     seen_p = {}
-    import pprint
+    # import pprint
 
     def next_arg(argv, before):
         try:
@@ -179,6 +202,8 @@ def walk(cli, argv):
         kind = cur.get("type")
         if kind:
             val = kind(val)
+        if "choices" in cur:
+            val = cur.get("select", select)(val, cur["choices"])
         # - call
         if "call" in cur:
             return getattr(cli, cur["call"])(val)
@@ -191,8 +216,6 @@ def walk(cli, argv):
             else:
                 x.append(val)
             return
-        if "choices" in cur:
-            val = select(val, cur["choices"])
         setattr(cli, dest, val)
 
     def push_flag(cur, state):
@@ -299,13 +322,13 @@ def walk(cli, argv):
             push_flag(cur, value)
 
     dd = None
-    argv = iter(argv)
+    cli._o_argv = argv = iter(argv)
     # skip prog name
-    next(argv, None)
+    skip_first is False or next(argv, None)
     # get first argument
     arg = next(argv, None)
     while arg is not None:
-        # print('ARG', arg)
+        print('ARG', arg, cli)
         if dd or ("-" == arg):
             plain(find_arg(arg), arg)
         elif "--" == arg:
@@ -357,7 +380,7 @@ def walk(cli, argv):
                     setattr(cli, a["dest"], a["default"])
         elif required == "+":
             if n < 1:
-                raise RuntimeError("{!r} needs one or more arguments".format(a["dest"]))
+                raise RuntimeError("{!r} needs atleast one argument".format(a["dest"]))
         elif required == "*":
             if n < 1:
                 if "call" not in a:
