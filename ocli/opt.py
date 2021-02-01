@@ -28,6 +28,7 @@ def param(*args, **kwargs):
 def arg(*args, **kwargs):
     for v in args:
         if v.isidentifier():
+        # if v.isalnum():
             kwargs["dest"] = v
         else:  # v in ('+', '*', True)
             kwargs["required"] = v

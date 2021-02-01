@@ -83,7 +83,8 @@ def usage(cli, **kwargs):
 
     parser = ArgumentParser(add_help=False, **kwargs)
 
-    for v, *a in collect_params(cli):
+    for _ in collect_params(cli):
+        v, a = _[0], _[1:]
         if v.get("help") is False:
             continue
         a = ["{}{}".format(len(_) > 1 and "--" or "-", _) for _ in a]
