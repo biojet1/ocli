@@ -1,19 +1,18 @@
 import unittest
+from sys import path
 from shlex import split
-from ocli import *
-from ocli.opt import *
-from ocli.usage import usage
+from ocli import arg, param, flag, Main
+from ocli.opt import all_args, all_params
+# from ocli.usage import usage
+
+print(path)
 
 
 class Test(unittest.TestCase):
     def check(self, Class, cmd, env):
         x = Class()
         x.main(split(cmd))
-        d = dict(
-            (k, v)
-            for (k, v) in x.__dict__.items()
-            if not k.startswith("_o_")
-        )
+        d = dict((k, v) for (k, v) in x.__dict__.items() if not k.startswith("_o_"))
         self.assertEqual(d, env, cmd)
         self.check_args(x)
 
@@ -341,15 +340,12 @@ class Test(unittest.TestCase):
 
 
 class TestParse:
-    successes=failures=[]
+    successes = failures = []
+
     def check(self, Class, cmd, env):
         x = Class()
         x.main(split(cmd))
-        d = dict(
-            (k, v)
-            for (k, v) in x.__dict__.items()
-            if not k.startswith("_o_")
-        )
+        d = dict((k, v) for (k, v) in x.__dict__.items() if not k.startswith("_o_"))
         self.assertEqual(d, env, cmd)
         # self.check_args(x)
 
