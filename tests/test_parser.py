@@ -8,15 +8,18 @@ from ocli.usage import usage
 class Test(unittest.TestCase):
     def check(self, Class, cmd, env):
         x = Class()
-        self.assertEqual(x.main(split(cmd)).__dict__, env, cmd)
+        x.main(split(cmd))
+        d = dict(
+            (k, v)
+            for (k, v) in x.__dict__.items()
+            if not k.startswith("_o_")
+        )
+        self.assertEqual(d, env, cmd)
         self.check_args(x)
-        # print(usage(x))
 
     def check_successes(self, Class, *args):
         for cmd, env in args:
-            x = Class()
-            x.main(split("cmd " + cmd))
-            self.assertEqual(x.__dict__, env, cmd)
+            self.check(Class, "cmd " + cmd, env)
 
     def check_failures(self, Class, *args, exception=RuntimeError):
         for cmd in args:
@@ -338,12 +341,21 @@ class Test(unittest.TestCase):
 
 
 class TestParse:
+    successes=failures=[]
+    def check(self, Class, cmd, env):
+        x = Class()
+        x.main(split(cmd))
+        d = dict(
+            (k, v)
+            for (k, v) in x.__dict__.items()
+            if not k.startswith("_o_")
+        )
+        self.assertEqual(d, env, cmd)
+        # self.check_args(x)
+
     def test_successes(self):
         for cmd, env in self.successes:
-            x = self.Class()
-            x.main(split("cmd " + cmd))
-            self.assertEqual(x.__dict__, env, cmd)
-        # print(usage(x))
+            self.check(self.Class, "cmd " + cmd, env)
 
     def test_failures(self):
         for cmd in self.failures:

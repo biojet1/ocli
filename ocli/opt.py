@@ -328,7 +328,7 @@ def walk(cli, argv, skip_first=None):
     # get first argument
     arg = next(argv, None)
     while arg is not None:
-        print('ARG', arg, cli)
+        # print('ARG', arg, cli)
         if dd or ("-" == arg):
             plain(find_arg(arg), arg)
         elif "--" == arg:
