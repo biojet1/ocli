@@ -1,3 +1,6 @@
+from .opt import param
+
+
 class Counter(object):
     def __getattr__(self, name):
         return self.__dict__.setdefault(name, 0)
@@ -103,9 +106,6 @@ class Expando(object):
         return self.__dict__[name]
 
 
-from .opt import param
-
-
 class BasicLog:
     log_level = "INFO"
     log_format = "%(levelname)s: %(message)s"
@@ -121,10 +121,10 @@ class BasicLog:
     def _o_log_level(self, value):
         import logging
 
-        l = getattr(logging, value.upper(), None)
-        if not isinstance(l, int):
-            raise ValueError("Invalid log level: %s" % (v,))
-        logging.getLogger().setLevel(l)
+        n = getattr(logging, value.upper(), None)
+        if not isinstance(n, int):
+            raise ValueError("Invalid log level: %s" % (value,))
+        logging.getLogger().setLevel(n)
 
     def ready(self, *args, **kwargs):
         import logging
