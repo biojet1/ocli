@@ -87,7 +87,7 @@ def usage(cli, **kwargs):
         v, a = _[0], _[1:]
         if v.get("help") is False:
             continue
-        a = ["{}{}".format(len(_) > 1 and "--" or "-", _) for _ in a]
+        a = ["{}{}".format(len(_) > 1 and "--" or "-", _.replace('_', '-')) for _ in a]
 
         if v.get("type"):
             w = dict(

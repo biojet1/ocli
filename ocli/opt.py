@@ -200,11 +200,13 @@ def walk(cli, argv, skip_first=None):
         raise RuntimeError("Unexpected argument {!r}".format(arg))
 
     def push(cur, val):
+        if "choices" in cur:
+            val = cur.get("select", select)(val, cur["choices"])
         kind = cur.get("type")
         if kind:
             val = kind(val)
-        if "choices" in cur:
-            val = cur.get("select", select)(val, cur["choices"])
+        # if "choices" in cur:
+        #     val = cur.get("select", select)(val, cur["choices"])
         # - call
         if "call" in cur:
             return getattr(cli, cur["call"])(val)

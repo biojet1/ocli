@@ -1,4 +1,4 @@
-from .opt import flag, param, arg, walk, sub
+from .opt import flag, param, arg, walk, sub, enum_params
 from .usage import Usage
 
 
@@ -29,6 +29,24 @@ class Main(Usage):
         sub.ready(**kwargs)
         walk(sub, self._o_argv, skip_first=False)
         return sub.start(**kwargs)
+
+    # def __getattr__(self, name):
+    #     # TODO: Document
+    #     m = "__let_" not in name
+    #     if m:
+    #         m = getattr(self, "__let_" + name, None)
+    #     if m:
+    #         setattr(self, name, None)
+    #         x = m()
+    #         setattr(self, name, x)
+    #         return x
+    #     #
+    #     try:
+    #         m = super().__getattr__
+    #     except AttributeError:
+    #         raise AttributeError(name, self)
+    #     else:
+    #         return m(name)
 
 
 __all__ = ("flag", "param", "arg", "sub", "Main")
