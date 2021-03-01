@@ -87,7 +87,7 @@ def usage(cli, **kwargs):
         v, a = _[0], _[1:]
         if v.get("help") is False:
             continue
-        a = ["{}{}".format(len(_) > 1 and "--" or "-", _.replace('_', '-')) for _ in a]
+        a = ["{}{}".format(len(_) > 1 and "--" or "-", _.replace("_", "-")) for _ in a]
 
         if v.get("type"):
             w = dict(
@@ -132,3 +132,87 @@ class Usage:
         from sys import exit
 
         exit()
+
+
+def help(opt):
+    def collect_params(opt):
+        mem = set()
+        col = {}
+        for k, v in opt.o_params.items():
+            if k in mem:
+                continue
+            else:
+                mem.add(k)
+            x = id(v)
+            if x in col:
+                col[x].append(k)
+            else:
+                col[x] = [v, k]
+        # print(col.values())
+        for v in col.values():
+            yield v
+
+    def fun(*arg):
+        from argparse import ArgumentParser
+
+        parser = ArgumentParser(add_help=False)
+
+        for _ in collect_params(opt):
+            v, a = _[0], _[1:]
+            if v.get("help") is False:
+                continue
+            a = [
+                "{}{}".format(len(_) > 1 and "--" or "-", _.replace("_", "-"))
+                for _ in a
+            ]
+
+            if v.get("type"):
+                w = dict(
+                    dest=v.get("dest"),
+                    type=v.get("type"),
+                    choices=v.get("choices"),
+                    default=v.get("default"),
+                    help=v.get("help"),
+                )
+                x = v.get("required")
+                if x is True:
+                    w["required"] = x
+
+                # print("PARM", a, w)
+                parser.add_argument(*a, **w)
+            else:
+                w = dict(dest=v.get("dest"), help=v.get("help"), action="store_true")
+                # print("FLAG", a, w)
+                parser.add_argument(*a, **w)
+
+        for _, v in opt.o_args.items():
+            w = dict(
+                help=v.get("help"),
+                type=v.get("type"),
+                choices=v.get("choices"),
+            )
+            x = v.get("required")
+            if x is True:
+                w["nargs"] = 1
+            elif x in ("+", "*"):
+                w["nargs"] = x
+
+            parser.add_argument(v["dest"], **w)
+
+        parser.print_help()
+        from sys import exit
+
+        exit()
+
+    return fun
+
+
+class Help:
+    def options(self, opt):
+        opt.flag("help", "h", help="show this help message and exit", call=help(opt))
+        try:
+            m = super().options
+        except AttributeError:
+            pass
+        else:
+            return m(opt)
