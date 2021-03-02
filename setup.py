@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="ocli",  # Replace with your own username
-    version="0.0.2",
+    version="0.0.3",
     author="biojet1",
     author_email="biojet1@gmail.com",
     description="Command line app object",

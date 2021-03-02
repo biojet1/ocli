@@ -14,13 +14,12 @@ class Base(Help):
         " .main(...) --> ready(...) --> start(...)."
         return self
 
-    def _o_walk_sub(self, value, **kwargs):
-        klass = self._o_sub[value]
+    def _o_walk_sub(self, which, **kwargs):
+        klass = kwargs["cmd_map"][which]
         sub = klass()
         sub._o_parent = self
-        sub.ready(**kwargs)
-        walk(sub, self._o_argv, skip_first=False)
-        return sub.start(**kwargs)
+        # print(list(kwargs["opt"].argv))
+        return sub.main(kwargs["opt"].argv, skip_first=False)
 
     def options(self, opt, *args, **kwargs):
         try:
@@ -30,14 +29,14 @@ class Base(Help):
         else:
             return f(opt)
 
-    def main(self, argv=None, **kwargs):
+    def main(self, argv=None, skip_first=None, **kwargs):
         "Entry point of app"
         if argv is None:
             from sys import argv
         self.ready(**kwargs)
         opt = Opt(self)
         self.options(opt)
-        opt.walk(argv)
+        opt.walk(argv, skip_first=skip_first)
         # NOTE: if .start did not do anything may be it has 'yield' statement
         return self.start(**kwargs)
 
@@ -150,8 +149,14 @@ class Opt:
         o[k] = kwargs
         return self
 
-    def sub(self, *args, **kwargs):
-        return self
+    def sub(self, cmd_map, *args, **kwargs):
+        if "choices" not in kwargs:
+            kwargs["choices"] = cmd_map.keys()
+        if "call" not in kwargs:
+            kwargs["call"] = "_o_walk_sub"
+            kwargs["dest"] = "command"  # OTDO: use metavar like
+        kwargs["kwargs"] = dict(cmd_map=cmd_map, opt=self)
+        return self.arg(**kwargs)
 
     def walk(self, argv, skip_first=None):
         cli = self.cli
