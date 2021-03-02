@@ -28,7 +28,7 @@ def param(*args, **kwargs):
 def arg(*args, **kwargs):
     for v in args:
         if v.isidentifier():
-        # if v.isalnum():
+            # if v.isalnum():
             kwargs["dest"] = v
         else:  # v in ('+', '*', True)
             kwargs["required"] = v
@@ -67,7 +67,7 @@ def sub(cmd_map, **kwargs):
     if "choices" not in kwargs:
         kwargs["choices"] = cmd_map.keys()
     if "call" not in kwargs:
-        kwargs["call"] = '_o_walk_sub'
+        kwargs["call"] = "_o_walk_sub"
     fn = arg(**kwargs)
 
     def fun(cls):
@@ -208,8 +208,13 @@ def walk(cli, argv, skip_first=None):
         # if "choices" in cur:
         #     val = cur.get("select", select)(val, cur["choices"])
         # - call
-        if "call" in cur:
-            return getattr(cli, cur["call"])(val)
+        call = cur.get("call")
+        if not call:
+            pass
+        elif isinstance(call, str):
+            return getattr(cli, call)(val)
+        else:
+            return call(val)
         dest = cur.get("dest")
         # - append
         if "append" in cur:

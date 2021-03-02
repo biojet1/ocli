@@ -135,3 +135,43 @@ class BasicLog:
             )
         )
         super().ready(*args, **kwargs)
+
+
+class LogOpt:
+    log_level = "INFO"
+    log_format = "%(levelname)s: %(message)s"
+
+    def options(self, opt):
+        import logging
+
+        logging.basicConfig(
+            **dict(
+                level=getattr(logging, self.log_level.upper()), format=self.log_format
+            )
+        )
+
+        def log_level(v):
+            n = getattr(logging, v.upper(), None)
+            if not isinstance(n, int):
+                raise ValueError("Invalid log level: %s" % (v,))
+            logging.getLogger().setLevel(n)
+
+        def log_format(v):
+            logging.getLogger().handlers[0].setFormatter(logging.Formatter(v))
+
+        super().options(
+            opt.param("log_level", help="use log level", call=log_level).param(
+                "log_format", help="use log format", call=log_format
+            )
+        )
+
+
+class DryRunOpt:
+    def options(self, opt):
+        dry_run = getattr(self, "dry_run", None)
+
+        if dry_run is True:
+            opt.flag("act", "a", dest="dry_run", help="not a trial run", const=False)
+        elif dry_run is False:
+            opt.flag("dry_run", "n", dest="dry_run", help="perform a trial run")
+        super().options(opt)
