@@ -213,6 +213,6 @@ class Help:
         try:
             m = super().options
         except AttributeError:
-            pass
+            return opt
         else:
             return m(opt)

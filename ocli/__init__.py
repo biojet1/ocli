@@ -6,22 +6,26 @@ class Base(Help):
     "The based class fror your command line app"
 
     def ready(self, *args, **kwargs):
+        # type: (Any, Any) -> Any
         "Called before walk options. Subclass should call super().ready(*args, **kwargs)"
 
     def start(self, *args, **kwargs):
+        # type: (Any, Any) -> Base
         "Start point of app."
         " Called after walk options."
         " .main(...) --> ready(...) --> start(...)."
         return self
 
     def _o_walk_sub(self, which, **kwargs):
+        # type: (str, Any) -> Opt
         klass = kwargs["cmd_map"][which]
         sub = klass()
         sub._o_parent = self
         # print(list(kwargs["opt"].argv))
-        return sub.main(kwargs["opt"].argv, skip_first=False)
+        return sub.main(kwargs["opt"].iargv, skip_first=False)
 
     def options(self, opt, *args, **kwargs):
+        # type: (Opt, Any, Any) -> Opt
         try:
             f = super().options
         except AttributeError:
@@ -29,97 +33,106 @@ class Base(Help):
         else:
             return f(opt)
 
-    def main(self, argv=None, skip_first=None, **kwargs):
+    def main(self, argv=None, skip_first=None, **_kwargs):
+        # type: (Optional[Sequence[str]], bool, Any) -> Base
         "Entry point of app"
-        if argv is None:
-            from sys import argv
-        self.ready(**kwargs)
+        self.ready(**_kwargs)
         opt = Opt(self)
         self.options(opt)
-        opt.walk(argv, skip_first=skip_first)
-        # NOTE: if .start did not do anything may be it has 'yield' statement
-        return self.start(**kwargs)
-
-
-class Main(Usage):
-    "The based class fror your command line app"
-
-    def ready(self, *args, **kwargs):
-        "Called before walk options. Subclass should call super().ready(*args, **kwargs)"
-
-    def main(self, argv=None, **kwargs):
-        "Entry point of app"
         if argv is None:
-            from sys import argv
-        self.ready(**kwargs)
-        walk(self, argv)
+            import sys
+
+            opt.walk(sys.argv, skip_first=skip_first)
+        else:
+            opt.walk(argv, skip_first=skip_first)
         # NOTE: if .start did not do anything may be it has 'yield' statement
-        return self.start(**kwargs)
+        return self.start(**_kwargs)
 
-    def start(self, *args, **kwargs):
-        "Start point of app."
-        " Called after walk options."
-        " .main(...) --> ready(...) --> start(...)."
 
-    def _o_walk_sub(self, value, **kwargs):
-        klass = self._o_sub[value]
-        sub = klass()
-        sub._o_parent = self
-        sub.ready(**kwargs)
-        walk(sub, self._o_argv, skip_first=False)
-        return sub.start(**kwargs)
+# class Main(Usage):
+#     "The based class fror your command line app"
 
-    # def __getattr__(self, name):
-    #     # TODO: Document
-    #     m = "__let_" not in name
-    #     if m:
-    #         m = getattr(self, "__let_" + name, None)
-    #     if m:
-    #         setattr(self, name, None)
-    #         x = m()
-    #         setattr(self, name, x)
-    #         return x
-    #     #
-    #     try:
-    #         m = super().__getattr__
-    #     except AttributeError:
-    #         raise AttributeError(name, self)
-    #     else:
-    #         return m(name)
+#     def ready(self, *args, **kwargs):
+#         "Called before walk options. Subclass should call super().ready(*args, **kwargs)"
+
+#     def main(self, argv=None, **kwargs):
+#         "Entry point of app"
+#         if argv is None:
+#             from sys import argv
+#         self.ready(**kwargs)
+#         walk(self, argv)
+#         # NOTE: if .start did not do anything may be it has 'yield' statement
+#         return self.start(**kwargs)
+
+#     def start(self, *args, **kwargs):
+#         "Start point of app."
+#         " Called after walk options."
+#         " .main(...) --> ready(...) --> start(...)."
+
+#     def _o_walk_sub(self, value, **kwargs):
+#         klass = self._o_sub[value]
+#         sub = klass()
+#         sub._o_parent = self
+#         sub.ready(**kwargs)
+#         walk(sub, self._o_argv, skip_first=False)
+#         return sub.start(**kwargs)
+
+#     # def __getattr__(self, name):
+#     #     # TODO: Document
+#     #     m = "__let_" not in name
+#     #     if m:
+#     #         m = getattr(self, "__let_" + name, None)
+#     #     if m:
+#     #         setattr(self, name, None)
+#     #         x = m()
+#     #         setattr(self, name, x)
+#     #         return x
+#     #     #
+#     #     try:
+#     #         m = super().__getattr__
+#     #     except AttributeError:
+#     #         raise AttributeError(name, self)
+#     #     else:
+#     #         return m(name)
 
 
 __all__ = ("flag", "param", "arg", "sub", "Main", "Base")
 
 
 class Opt:
-    __slots__ = ("cli", "o_params", "o_args", "inc", "argv")
+    __slots__ = ("cli", "o_params", "o_args", "inc", "iargv")
 
     def __init__(self, cli):
+        # type: (Base) -> None
         self.cli = cli
         self.inc = 0
         from collections import OrderedDict
 
-        self.o_params = OrderedDict()
-        self.o_args = OrderedDict()
+        self.o_params = OrderedDict()  # type: Dict[str, Dict[str, Any]]
+        self.o_args = OrderedDict()  # type: Dict[Union[str, bool, int], Dict[str, str]]
 
     def flag(self, *args, **kwargs):
-        o = self.o_params
+        # type: (str, Any) -> Opt
         if not kwargs.get("dest"):
             for v in args:
                 if v:
                     kwargs["dest"] = v
                     break
+        o = self.o_params
         for x in args:
+            x = x.replace("-", "_")
             if x not in o:
                 o[x] = kwargs
         return self
 
     def param(self, *args, **kwargs):
+        # type: (str, Any) -> Opt
         if not kwargs.get("type"):
             kwargs["type"] = str
         return self.flag(*args, **kwargs)
 
     def arg(self, *args, **kwargs):
+        # type: (str, Any) -> Opt
         o = self.o_args
         if True in o:
             return self
@@ -150,15 +163,17 @@ class Opt:
         return self
 
     def sub(self, cmd_map, *args, **kwargs):
+        # type: (dict, str, Any) -> Opt
         if "choices" not in kwargs:
             kwargs["choices"] = cmd_map.keys()
         if "call" not in kwargs:
             kwargs["call"] = "_o_walk_sub"
-            kwargs["dest"] = "command"  # OTDO: use metavar like
+            kwargs["dest"] = "command"  # TODO: use metavar like
         kwargs["kwargs"] = dict(cmd_map=cmd_map, opt=self)
         return self.arg(**kwargs)
 
     def walk(self, argv, skip_first=None):
+        # type: (Union[Sequence[str], Iterator[str]], bool) -> None
         cli = self.cli
         _params = self.o_params
         _args = list(self.o_args.items())
@@ -169,12 +184,14 @@ class Opt:
         # import pprint
 
         def next_arg(argv, before):
+            # type: (Iterator[str], str) -> str
             try:
                 return next(argv)
             except StopIteration:
                 raise RuntimeError("Expected argument after {!r}".format(before))
 
-        def find_param(name, arg, flag=None):
+        def find_param(name, arg, flag=0):
+            # type: (str, str, int) -> Dict[str, str]
             for k, a in _params.items():
                 if k == name:
                     if len(k) == 1 if flag else len(k) > 1:
@@ -185,9 +202,10 @@ class Opt:
                         return a
             if flag:
                 raise RuntimeError("Unknown option {!r} in {!r}".format(name, arg))
-            raise RuntimeError("Unknown option {!r}".format(arg))
+            raise RuntimeError("Unknown option {!r} of argument {!r}".format(name, arg))
 
         def find_arg(arg):
+            # type: (str) -> Dict[str, str]
             if _args:
                 k, v = _args.pop(0)
                 # print("find_arg",  k, v, arg)
@@ -202,25 +220,32 @@ class Opt:
         #     (getattr(cli, call) if isinstance(call, str) else call)(v)
 
         def try_call(cur, v):
+            # type: (Dict[str, str], str) -> bool
             call = cur.get("call")
-            if call:
-                try:
-                    fn = getattr(cli, call) if isinstance(call, str) else call
-                except Exception:
-                    raise RuntimeError(
-                        "from argument {!r} get {!r} failed".format(arg, call)
+            if not call:
+                return False
+            try:
+                fn = getattr(cli, call) if isinstance(call, str) else call
+            except Exception:
+                raise RuntimeError(
+                    "from argument {!r} get {!r} failed".format(arg, call)
+                )
+            try:
+                kwa = cur.get("kwargs", {})  # type: Dict[str, Any]
+                # kwa['argv'] = self.iargv
+                fn(v, **kwa)
+            except SystemExit:
+                raise
+            except Exception as ex:
+                raise RuntimeError(
+                    "from argument {!r} call {!r} failed: {!r}".format(
+                        arg, call, [fn, v]
                     )
-                try:
-                    fn(v, **cur.get("kwargs", {}))
-                except SystemExit:
-                    raise
-                except Exception:
-                    raise RuntimeError(
-                        "from argument {!r} call {!r} failed".format(arg, call)
-                    )
-                return True
+                ) from ex
+            return True
 
         def push(cur, val):
+            # type: (Dict[str, Any], Any) -> None
             if "choices" in cur:
                 val = cur.get("select", select)(val, cur["choices"])
             kind = cur.get("type")
@@ -234,7 +259,8 @@ class Opt:
             # - call
             if try_call(cur, val):
                 return
-            dest = cur.get("dest")
+            # dest = cur.get("dest")
+            dest = cur["dest"]
             # - append
             if "append" in cur:
                 x = getattr(cli, dest, None)
@@ -246,6 +272,7 @@ class Opt:
             setattr(cli, dest, val)
 
         def push_flag(cur, state):
+            # type: (Dict[str, Any], Any) -> None
             # - call
             if try_call(cur, state):
                 return
@@ -282,7 +309,8 @@ class Opt:
                     dest = count
                 x = getattr(cli, dest, None)
                 if x is None:
-                    val = cur.get("const", 0)
+                    val = cur.get("const") or 0
+                    assert isinstance(val, int)
                     if state is False:
                         setattr(cli, dest, val - 1)
                     else:
@@ -301,9 +329,11 @@ class Opt:
                 return setattr(cli, dest, state is not False)
 
         def plain(cur, arg):
+            # type: (Dict[str, Any], Any) -> None
             push(cur, arg)
 
         def short(cur, chrs, index, argv):
+            # type: (Dict[str, Any], str, int, Iterator[str]) -> None
             index += 1
             if "type" in cur:  # params
                 # print(cur['type'], chrs, index, index < len(chrs))
@@ -315,6 +345,7 @@ class Opt:
                     short(find_param(chrs[index], chrs, index), chrs, index, argv)
 
         def long(arg, cur, value=None, argv=None):
+            # type: (str, Dict[str, Any], Union[bool, None, str], Optional[Iterator[str]]) -> None
             if "type" in cur:  # params
                 if value is False:
                     raise RuntimeError(
@@ -333,11 +364,12 @@ class Opt:
                 push_flag(cur, value)
 
         dd = None
-        self.argv = argv = iter(argv)
+        self.iargv = iargv = iter(argv)
         # skip prog name
-        skip_first is False or next(argv, None)
+        if skip_first is not False:
+            next(iargv, None)
         # get first argument
-        arg = next(argv, None)
+        arg = next(iargv, None)
         while arg is not None:
             # print('ARG', arg, cli)
             if dd or ("-" == arg):
@@ -347,19 +379,19 @@ class Opt:
             elif arg.startswith("--"):
                 if "=" in arg:  # --name=value
                     t = arg.partition("=")
-                    long(arg, find_param(t[0][2:].replace("-", "_"), arg), t[2], argv)
+                    long(arg, find_param(t[0][2:].replace("-", "_"), arg), t[2], iargv)
                 elif arg.startswith("--no-"):  # --no-name
                     long(arg, find_param(arg[5:].replace("-", "_"), arg), False)
                 elif arg.startswith("--no"):  # --noname
                     long(arg, find_param(arg[4:].replace("-", "_"), arg), False)
                 else:  # --name
-                    long(arg, find_param(arg[2:].replace("-", "_"), arg), None, argv)
+                    long(arg, find_param(arg[2:].replace("-", "_"), arg), None, iargv)
             elif arg.startswith("-"):  # -qhoFILE == -q -h -o FILE
-                short(find_param(arg[1], arg, 1), arg, 1, argv)
+                short(find_param(arg[1], arg, 1), arg, 1, iargv)
             else:
                 plain(find_arg(arg), arg)
             # get next argument
-            arg = next(argv, None)
+            arg = next(iargv, None)
         for v in _params.values():
             # print("enum_params", v)
             if "seen" in v:  # provided
@@ -397,6 +429,7 @@ class Opt:
 
 
 def select(val, choices):
+    # type: (str, Sequence[str]) -> str
     chosen = None
     for n in choices:
         if not n or not n.startswith(val):
@@ -409,3 +442,10 @@ def select(val, choices):
     if chosen is None:
         raise RuntimeError("Invalid choice {!r} choose from {!r} ".format(val, choices))
     return chosen
+
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import *
+    import pathlib
