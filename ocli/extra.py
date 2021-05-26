@@ -1,4 +1,4 @@
-from .opt import param
+from . import Core
 
 
 class Counter(object):
@@ -29,7 +29,7 @@ class Counter(object):
         return str(key) + " " + self._format_value(value, key) + ";"
 
 
-class HttpHelper(object):
+class HttpHelper(Core):
     def __getattr__(self, name):
         if name == "http":
             x = getattr(self, "http_name", None)
@@ -61,15 +61,8 @@ class HttpHelper(object):
         return self.__dict__[name]
 
     def option(self, opt):
-        if opt.pop_string("http", "H"):
-            self.http_name = opt.value
-        else:
-            try:
-                m = super().option
-            except AttributeError:
-                pass
-            else:
-                m(opt)
+        # type: (Opt) -> None
+        super().options(opt.param("http_name", "H", help="use http requester"))
 
 
 class Expando(object):
@@ -106,42 +99,12 @@ class Expando(object):
         return self.__dict__[name]
 
 
-class BasicLog:
-    log_level = "INFO"
-    log_format = "%(levelname)s: %(message)s"
-
-    @param("log_format", help="use log format")
-    def _o_log_format(self, value):
-        import logging
-
-        fmt = logging.Formatter(value)
-        logging.getLogger().handlers[0].setFormatter(fmt)
-
-    @param("log_level", help="use log level")
-    def _o_log_level(self, value):
-        import logging
-
-        n = getattr(logging, value.upper(), None)
-        if not isinstance(n, int):
-            raise ValueError("Invalid log level: %s" % (value,))
-        logging.getLogger().setLevel(n)
-
-    def ready(self, *args, **kwargs):
-        import logging
-
-        logging.basicConfig(
-            **dict(
-                level=getattr(logging, self.log_level.upper()), format=self.log_format
-            )
-        )
-        super().ready(*args, **kwargs)
-
-
-class LogOpt:
+class LogOpt(Core):
     log_level = "INFO"
     log_format = "%(levelname)s: %(message)s"
 
     def options(self, opt):
+        # type: (Opt) -> None
         import logging
 
         logging.basicConfig(
@@ -166,8 +129,9 @@ class LogOpt:
         )
 
 
-class DryRunOpt:
+class DryRunOpt(Core):
     def options(self, opt):
+        # type: (Opt) -> None
         dry_run = getattr(self, "dry_run", None)
 
         if dry_run is True:
@@ -175,3 +139,10 @@ class DryRunOpt:
         elif dry_run is False:
             opt.flag("dry_run", "n", dest="dry_run", help="perform a trial run")
         super().options(opt)
+
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import *
+    from . import Opt

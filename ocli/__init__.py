@@ -1,8 +1,4 @@
-from .opt import flag, param, arg, walk, sub
-from .usage import Usage, Help
-
-
-class Base(Help):
+class Core:
     "The based class fror your command line app"
 
     def ready(self, *args, **kwargs):
@@ -10,7 +6,7 @@ class Base(Help):
         "Called before walk options. Subclass should call super().ready(*args, **kwargs)"
 
     def start(self, *args, **kwargs):
-        # type: (Any, Any) -> Base
+        # type: (Any, Any) -> Core
         "Start point of app."
         " Called after walk options."
         " .main(...) --> ready(...) --> start(...)."
@@ -24,17 +20,12 @@ class Base(Help):
         # print(list(kwargs["opt"].argv))
         return sub.main(kwargs["opt"].iargv, skip_first=False)
 
-    def options(self, opt, *args, **kwargs):
-        # type: (Opt, Any, Any) -> Opt
-        try:
-            f = super().options
-        except AttributeError:
-            return opt
-        else:
-            return f(opt)
+    def options(self, opt):
+        # type: (Opt) -> None
+        pass
 
     def main(self, argv=None, skip_first=None, **_kwargs):
-        # type: (Optional[Sequence[str]], bool, Any) -> Base
+        # type: (Optional[Sequence[str]], bool, Any) -> Core
         "Entry point of app"
         self.ready(**_kwargs)
         opt = Opt(self)
@@ -45,65 +36,30 @@ class Base(Help):
             opt.walk(sys.argv, skip_first=skip_first)
         else:
             opt.walk(argv, skip_first=skip_first)
+        del opt
         # NOTE: if .start did not do anything may be it has 'yield' statement
         return self.start(**_kwargs)
 
 
-# class Main(Usage):
-#     "The based class fror your command line app"
-
-#     def ready(self, *args, **kwargs):
-#         "Called before walk options. Subclass should call super().ready(*args, **kwargs)"
-
-#     def main(self, argv=None, **kwargs):
-#         "Entry point of app"
-#         if argv is None:
-#             from sys import argv
-#         self.ready(**kwargs)
-#         walk(self, argv)
-#         # NOTE: if .start did not do anything may be it has 'yield' statement
-#         return self.start(**kwargs)
-
-#     def start(self, *args, **kwargs):
-#         "Start point of app."
-#         " Called after walk options."
-#         " .main(...) --> ready(...) --> start(...)."
-
-#     def _o_walk_sub(self, value, **kwargs):
-#         klass = self._o_sub[value]
-#         sub = klass()
-#         sub._o_parent = self
-#         sub.ready(**kwargs)
-#         walk(sub, self._o_argv, skip_first=False)
-#         return sub.start(**kwargs)
-
-#     # def __getattr__(self, name):
-#     #     # TODO: Document
-#     #     m = "__let_" not in name
-#     #     if m:
-#     #         m = getattr(self, "__let_" + name, None)
-#     #     if m:
-#     #         setattr(self, name, None)
-#     #         x = m()
-#     #         setattr(self, name, x)
-#     #         return x
-#     #     #
-#     #     try:
-#     #         m = super().__getattr__
-#     #     except AttributeError:
-#     #         raise AttributeError(name, self)
-#     #     else:
-#     #         return m(name)
-
-
-__all__ = ("flag", "param", "arg", "sub", "Main", "Base")
+class Base(Core):
+    def options(self, opt):
+        # type: (Opt) -> None
+        super().options(
+            opt.flag(
+                "help",
+                "h",
+                help="show this help message and exit",
+                call=help,
+                kwargs={"opt": opt},
+            )
+        )
 
 
 class Opt:
     __slots__ = ("cli", "o_params", "o_args", "inc", "iargv")
 
     def __init__(self, cli):
-        # type: (Base) -> None
+        # type: (Core) -> None
         self.cli = cli
         self.inc = 0
         from collections import OrderedDict
@@ -178,10 +134,6 @@ class Opt:
         _params = self.o_params
         _args = list(self.o_args.items())
         _ctx = {}
-        # seen = set()
-        # seen_a = {}
-        # seen_p = {}
-        # import pprint
 
         def next_arg(argv, before):
             # type: (Iterator[str], str) -> str
@@ -220,8 +172,8 @@ class Opt:
         #     (getattr(cli, call) if isinstance(call, str) else call)(v)
 
         def try_call(cur, v):
-            # type: (Dict[str, str], str) -> bool
-            call = cur.get("call")
+            # type: (Mapping[str, Any], str) -> bool
+            call = cur.get("call")  # type: Union[ Callable[[Any], None], str, None]
             if not call:
                 return False
             try:
@@ -231,8 +183,7 @@ class Opt:
                     "from argument {!r} get {!r} failed".format(arg, call)
                 )
             try:
-                kwa = cur.get("kwargs", {})  # type: Dict[str, Any]
-                # kwa['argv'] = self.iargv
+                kwa = cur.get("kwargs", {})
                 fn(v, **kwa)
             except SystemExit:
                 raise
@@ -247,7 +198,7 @@ class Opt:
         def push(cur, val):
             # type: (Dict[str, Any], Any) -> None
             if "choices" in cur:
-                val = cur.get("select", select)(val, cur["choices"])
+                val = cur.get("select", _select)(val, cur["choices"])
             kind = cur.get("type")
             if kind:
                 try:
@@ -428,7 +379,7 @@ class Opt:
                 raise RuntimeError("{!r} needed".format(a["dest"]))
 
 
-def select(val, choices):
+def _select(val, choices):
     # type: (str, Sequence[str]) -> str
     chosen = None
     for n in choices:
@@ -444,8 +395,77 @@ def select(val, choices):
     return chosen
 
 
+def help(*arg, opt):
+    # type: (bool, Opt) -> None
+    def collect_params():
+        mem = set()
+        col = {}
+        for k, v in opt.o_params.items():
+            if k in mem:
+                continue
+            else:
+                mem.add(k)
+            x = id(v)
+            if x in col:
+                col[x].append(k)
+            else:
+                col[x] = [v, k]
+        # print(col.values())
+        for v in col.values():
+            yield v
+
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser(add_help=False)
+
+    for _ in collect_params():
+        v, a = _[0], _[1:]
+        if v.get("help") is False:
+            continue
+        a = ["{}{}".format(len(_) > 1 and "--" or "-", _.replace("_", "-")) for _ in a]
+
+        if v.get("type"):
+            w = dict(
+                dest=v.get("dest"),
+                type=v.get("type"),
+                choices=v.get("choices"),
+                default=v.get("default"),
+                help=v.get("help"),
+            )
+            x = v.get("required")
+            if x is True:
+                w["required"] = x
+
+            # print("PARM", a, w)
+            parser.add_argument(*a, **w)
+        else:
+            w = dict(dest=v.get("dest"), help=v.get("help"), action="store_true")
+            # print("FLAG", a, w)
+            parser.add_argument(*a, **w)
+
+    for _, v in opt.o_args.items():
+        w = dict(
+            help=v.get("help"),
+            type=v.get("type"),
+            choices=v.get("choices"),
+        )
+        x = v.get("required")
+        if x is True:
+            w["nargs"] = 1
+        elif x in ("+", "*"):
+            w["nargs"] = x
+
+        parser.add_argument(v["dest"], **w)
+
+    parser.print_help()
+    from sys import exit
+
+    exit()
+
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import *
-    import pathlib
+
+__all__ = ("Base", "Opt")
