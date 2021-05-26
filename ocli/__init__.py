@@ -1,24 +1,16 @@
 class Core:
     "The based class fror your command line app"
 
-    def ready(self, *args, **kwargs):
-        # type: (Any, Any) -> Any
+    def ready(self, **kwargs):
+        # type: (Any) -> Any
         "Called before walk options. Subclass should call super().ready(*args, **kwargs)"
 
-    def start(self, *args, **kwargs):
-        # type: (Any, Any) -> Core
+    def start(self, **kwargs):
+        # type: (Any) -> Core
         "Start point of app."
         " Called after walk options."
         " .main(...) --> ready(...) --> start(...)."
         return self
-
-    def _o_walk_sub(self, which, **kwargs):
-        # type: (str, Any) -> Opt
-        klass = kwargs["cmd_map"][which]
-        sub = klass()
-        sub._o_parent = self
-        # print(list(kwargs["opt"].argv))
-        return sub.main(kwargs["opt"].iargv, skip_first=False)
 
     def options(self, opt):
         # type: (Opt) -> None
@@ -39,6 +31,14 @@ class Core:
         del opt
         # NOTE: if .start did not do anything may be it has 'yield' statement
         return self.start(**_kwargs)
+
+    def _o_walk_sub(self, which, **kwargs):
+        # type: (str, Any) -> Opt
+        klass = kwargs["cmd_map"][which]
+        sub = klass()
+        sub._o_parent = self
+        # print(list(kwargs["opt"].argv))
+        return sub.main(kwargs["opt"].iargv, skip_first=False)
 
 
 class Base(Core):
