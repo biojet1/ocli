@@ -17,7 +17,7 @@ class Core:
         pass
 
     def main(self, argv=None, skip_first=None, **_kwargs):
-        # type: (Optional[Sequence[str]], bool, Any) -> Core
+        # type: (Optional[Sequence[str]], Union[bool, None] , Any) -> Core
         "Entry point of app"
         self.ready(**_kwargs)
         opt = Opt(self)
@@ -33,7 +33,7 @@ class Core:
         return self.start(**_kwargs)
 
     def _o_walk_sub(self, which, **kwargs):
-        # type: (str, Any) -> Opt
+        # type: (str, Any) -> Any
         klass = kwargs["cmd_map"][which]
         sub = klass()
         sub._o_parent = self
@@ -56,16 +56,18 @@ class Base(Core):
 
 
 class Opt:
-    __slots__ = ("cli", "o_params", "o_args", "inc", "iargv")
+    __slots__ = ("cli", "o_params", "o_args", "inc", "iargv", "prog")
 
     def __init__(self, cli):
         # type: (Core) -> None
-        self.cli = cli
+        self.cli = cli  # type: Core
         self.inc = 0
         from collections import OrderedDict
 
         self.o_params = OrderedDict()  # type: Dict[str, Dict[str, Any]]
         self.o_args = OrderedDict()  # type: Dict[Union[str, bool, int], Dict[str, str]]
+        self.prog = None  # type: Optional[str]
+        # self.o_args = OrderedDict()  # type: Dict[Union[str, bool, int], ARG]
 
     def flag(self, *args, **kwargs):
         # type: (str, Any) -> Opt
@@ -85,6 +87,10 @@ class Opt:
         # type: (str, Any) -> Opt
         if not kwargs.get("type"):
             kwargs["type"] = str
+        append = kwargs.get("append")
+        if append and isinstance(append, str) and not kwargs.get("dest"):
+            kwargs["dest"] = append
+            kwargs["append"] = True
         return self.flag(*args, **kwargs)
 
     def arg(self, *args, **kwargs):
@@ -101,8 +107,10 @@ class Opt:
         if "requires" in kwargs:
             kwargs["required"] = kwargs["requires"]
 
-        dest = kwargs.get("dest")
-        append = kwargs.get("append")
+        dest = kwargs.get("dest")  # type: Optional[str]
+        append = kwargs.get(
+            "append"
+        )  # type: Union[Optional[Literal['+']], Optional[Literal['*']], Optional[Literal[True]]]
         call = kwargs.get("call")
         required = kwargs.get("required")
         if dest is None and append and append is not True:
@@ -129,7 +137,7 @@ class Opt:
         return self.arg(**kwargs)
 
     def walk(self, argv, skip_first=None):
-        # type: (Union[Sequence[str], Iterator[str]], bool) -> None
+        # type: (Union[Sequence[str], Iterator[str]], Optional[bool]) -> None
         cli = self.cli
         _params = self.o_params
         _args = list(self.o_args.items())
@@ -173,7 +181,7 @@ class Opt:
 
         def try_call(cur, v):
             # type: (Mapping[str, Any], str) -> bool
-            call = cur.get("call")  # type: Union[ Callable[[Any], None], str, None]
+            call = cur.get("call")  # type: Union[ Callable[[str], None], str, None]
             if not call:
                 return False
             try:
@@ -318,7 +326,12 @@ class Opt:
         self.iargv = iargv = iter(argv)
         # skip prog name
         if skip_first is not False:
-            next(iargv, None)
+            arg = next(iargv, None)
+            if arg:
+                try:
+                    self.prog
+                except AttributeError:
+                    self.prog = arg
         # get first argument
         arg = next(iargv, None)
         while arg is not None:
@@ -360,7 +373,7 @@ class Opt:
 
         for k, a in _args:
             # print("enum_args", a)
-            required = a.get("required")
+            required = a.get("required")  # type: Optional[Union[str, bool]]
             if required is None:
                 # if hasattr(cli, a["dest"]):
                 if a["dest"] in cli.__dict__:
@@ -398,8 +411,9 @@ def _select(val, choices):
 def help(*arg, opt):
     # type: (bool, Opt) -> None
     def collect_params():
+        # _type: () -> Generator[None, List[Union [str, Dict[str, Any]]], None]
         mem = set()
-        col = {}
+        col = {}  # _type: Dict[int, List[Union [str, Dict[str, Any]]] ]
         for k, v in opt.o_params.items():
             if k in mem:
                 continue
@@ -411,12 +425,12 @@ def help(*arg, opt):
             else:
                 col[x] = [v, k]
         # print(col.values())
-        for v in col.values():
-            yield v
+        for w in col.values():
+            yield w
 
     from argparse import ArgumentParser
 
-    parser = ArgumentParser(add_help=False)
+    parser = ArgumentParser(add_help=False, prog=opt.prog)
 
     for _ in collect_params():
         v, a = _[0], _[1:]
@@ -467,5 +481,17 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import *
+    from typing import TypedDict
+
+    ARG = TypedDict(
+        "ARG",
+        {
+            "dest": Optional[str],
+            "append": Union[
+                Optional[Literal["+"]], Optional[Literal["*"]], Optional[Literal[True]]
+            ],
+            "call": Optional[Callable[[str], None]],
+        },
+    )
 
 __all__ = ("Base", "Opt")

@@ -3,7 +3,7 @@ from shlex import split
 from ocli import Base
 
 
-class Base(Base):
+class AppBase(Base):
     def start(self, *args, **kwargs):
         return self
 
@@ -27,7 +27,7 @@ class Test(unittest.TestCase):
             self.assertRaises(exception, (lambda: x.main(split("cmd " + cmd))))
 
     def test_arg_append(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 return super().options(opt.arg(append="paths", default=[]))
 
@@ -35,7 +35,7 @@ class Test(unittest.TestCase):
         self.check(App, r"prog", dict(paths=[]))
 
     def test_arg_named(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 super().options(
                     opt.arg("red")
@@ -55,7 +55,7 @@ class Test(unittest.TestCase):
         self.check(App, "prog R", dict(red="R", blue="ao"))
 
     def test_arg_named_append(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 super().options(
                     opt.arg("first")
@@ -72,7 +72,7 @@ class Test(unittest.TestCase):
         self.check(App, "prog", dict())
 
     def test_params(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 super().options(
                     opt.param("apple", "a")
@@ -92,7 +92,7 @@ class Test(unittest.TestCase):
         self.assertRaises(AttributeError, getattr, app, "lemon")
 
     def test_flag(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 super().options(
                     opt.flag("ringo", "r", const="RINGO", dest="apple")
@@ -118,7 +118,7 @@ class Test(unittest.TestCase):
             self.check(App, "prog " + a, dict(apple="RINGO", banana=123, melon=True))
 
     def test_parse(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 super().options(
                     opt.arg(type=lambda x: x.split(), append="etc")
@@ -145,7 +145,7 @@ class Test(unittest.TestCase):
             )
 
     def test_mix(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 super().options(
                     opt.arg("first")
@@ -175,7 +175,7 @@ class Test(unittest.TestCase):
             )
 
     def test_multi_dest(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 super().options(
                     opt.flag("banana", "B", dest="num")
@@ -198,7 +198,7 @@ class Test(unittest.TestCase):
         self.check_successes(App, (r"-i2 --float=1.5 -B", dict(num=True)))
 
     def test_call(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 super().options(opt.arg(call="many"))
 
@@ -212,7 +212,7 @@ class Test(unittest.TestCase):
         self.check_successes(App, (r"W", dict(value="W")))
 
     def test_call_nargs_star(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 def many(v):
                     try:
@@ -229,7 +229,7 @@ class Test(unittest.TestCase):
         self.check_successes(App, (r"", dict()))
 
     def test_call_required(self):
-        class App(Base):
+        class App(AppBase):
             def options(self, opt):
                 super().options(
                     opt.arg(call="first")
@@ -265,7 +265,7 @@ class Test(unittest.TestCase):
         )
 
     def test_inherit(self):
-        class MultiDest(Base):
+        class MultiDest(AppBase):
             def options(self, opt):
                 super().options(
                     opt.flag("banana", "B", dest="num")
@@ -275,7 +275,7 @@ class Test(unittest.TestCase):
                     .param("float", "f", type=float, dest="num")
                 )
 
-        class Many(Base):
+        class Many(AppBase):
             def options(self, opt):
                 def many(v):
                     try:
@@ -285,7 +285,7 @@ class Test(unittest.TestCase):
 
                 super().options(opt.arg(requires="*", call=many))
 
-        class Mix(Base):
+        class Mix(AppBase):
             def options(self, opt):
                 super().options(
                     opt.arg("first")

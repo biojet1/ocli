@@ -129,6 +129,27 @@ class LogOpt(Core):
         )
 
 
+def opt_logging(opt, level="INFO", format="%(levelname)s: %(message)s"):
+    import logging
+
+    logging.basicConfig(**dict(format=format))
+
+    def log_level(v):
+        n = getattr(logging, v.upper(), None)
+        if not isinstance(n, int):
+            raise ValueError("Invalid log level: %s" % (v,))
+        logging.getLogger().setLevel(n)
+
+    def log_format(v):
+        logging.getLogger().handlers[0].setFormatter(logging.Formatter(v))
+
+    log_level(level)
+
+    return opt.param("log_level", help="use log level", call=log_level).param(
+        "log_format", help="use log format", call=log_format
+    )
+
+
 class DryRunOpt(Core):
     def options(self, opt):
         # type: (Opt) -> None
@@ -139,6 +160,24 @@ class DryRunOpt(Core):
         elif dry_run is False:
             opt.flag("dry_run", "n", dest="dry_run", help="perform a trial run")
         super().options(opt)
+
+
+def opt_dry_run(opt, initial=True):
+    # type: (Core, Opt, bool) -> Opt
+    if initial is True:
+        opt.flag(
+            "act",
+            "a",
+            dest="dry_run",
+            help="not a trial run",
+            const=False,
+            default=True,
+        )
+    elif initial is False:
+        opt.flag(
+            "dry_run", "n", dest="dry_run", help="perform a trial run", default=False
+        )
+    return opt
 
 
 from typing import TYPE_CHECKING
