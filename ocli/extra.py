@@ -65,6 +65,45 @@ class HttpHelper(Core):
         super().options(opt.param("http_name", "H", help="use http requester"))
 
 
+class Requestor:
+    def __getattr__(self, name):
+        if name == "http":
+            x = getattr(self, "_requestor", None)
+            if x == "r":
+                x = "requests"
+            elif x == "s":
+                x = "requests:session"
+            elif not x:
+                from os import environ
+
+                x = environ.get("_REQUESTOR") or "requests:session"
+
+            mod, sep, tail = x.partition(":")
+            if sep:
+                fun, *args = tail.split(",")
+                # print(x, mod, tail, fun, args)
+                m = __import__(
+                    mod,
+                    fromlist=[
+                        fun,
+                    ],
+                )
+                self.__dict__[name] = getattr(m, fun)(*args)
+            else:
+                self.__dict__[name] = __import__(mod)
+        else:
+            try:
+                m = super().__getattr__
+            except AttributeError:
+                raise AttributeError(name)
+            else:
+                return m(name)
+        return self.__dict__[name]
+
+    def options(self, opt):
+        super().options(opt.param("http", "H", dest="_requestor"))
+
+
 class Expando(object):
     # expando_map = dict(l_=list,m_=dict,s_=set,i_=int,t_=str,b_=bool,x_=Expando,v_=lambda:None)
     # def __getattr__2(self, name):

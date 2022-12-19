@@ -228,6 +228,7 @@ class Opt:
                 else:
                     x.append(val)
                 return
+            # - set
             setattr(cli, dest, val)
 
         def push_flag(cur, state):
